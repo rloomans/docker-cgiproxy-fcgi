@@ -53,8 +53,8 @@ $REPORT_USAGE= 0 ;
 
 #---- FastCGI configuration ----------------------------
 $FCGI_SOCKET= 8002 ;
-$FCGI_MAX_REQUESTS_PER_PROCESS= 1000 ;
-$FCGI_NUM_PROCESSES= 100 ;
+$FCGI_MAX_REQUESTS_PER_PROCESS= 50 ;
+$FCGI_NUM_PROCESSES= 10 ;
 
 #---- embedded server configuration ----------------------------
 $CERTIFICATE_FILE= "plain-cert.pem" ;
