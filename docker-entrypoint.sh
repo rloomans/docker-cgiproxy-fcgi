@@ -1,5 +1,4 @@
 #!/bin/bash
-set -vx
 set -e -o nounset
 
 timezone() {
