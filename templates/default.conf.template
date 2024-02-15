@@ -1,0 +1,21 @@
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+
+    location / {
+        index index.html index.htm;
+        try_files $uri $uri/ =404;
+
+        return 307 $scheme://$host:${CGIPROXY_PORT}/${CGIPROXY_SECRET_PATH}/;
+    }
+
+    location /${CGIPROXY_SECRET_PATH}/ {
+        fastcgi_pass             cgiproxy-fcgi:8002;
+        fastcgi_split_path_info  ^(/${CGIPROXY_SECRET_PATH})(/?.*)$;
+        fastcgi_param            SCRIPT_NAME $fastcgi_script_name;
+        fastcgi_param            PATH_INFO $fastcgi_path_info;
+        include                  fastcgi.conf;
+    }
+}
+

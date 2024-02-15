@@ -1,0 +1,34 @@
+---
+version: '3'
+services:
+  fcgi:
+    container_name: cgiproxy-fcgi
+    image: rloomans/cgiproxy-fcgi:latest
+    mem_limit: 512m
+    build:
+      context: .
+      pull: true
+    pull_policy: build
+    restart: always
+    dns:
+      - 1.0.0.2
+      - 1.1.1.2
+    expose:
+      - 8002
+    environment:
+      - TZ=UTC
+      - CGIPROXY_SECRET_PATH=oh-so-secret-path-please-change-me
+
+  nginx:
+    image: nginx:alpine
+    restart: always
+    environment:
+      - TZ=UTC
+      - CGIPROXY_SECRET_PATH=oh-so-secret-path-please-change-me
+      - CGIPROXY_PORT=8899
+    expose:
+      - 80
+    ports:
+      - 8899:80
+    volumes:
+      - ./templates:/etc/nginx/templates

@@ -18,15 +18,15 @@ timezone() {
 
 [[ "${TZ:-""}" ]] && timezone "$TZ"
 
-if [[ "${SECRET_PATH:-""}" = "" ]]; then
-    echo "ERROR: SECRET_PATH environment variable must be set" >&2
+if [[ "${CGIPROXY_SECRET_PATH:-""}" = "" ]]; then
+    echo "ERROR: CGIPROXY_SECRET_PATH environment variable must be set" >&2
     exit 10
 fi
 
-perl -p -E 's{^\$SECRET_PATH=.*;\$}{\$SECRET_PATH= "'"$SECRET_PATH"'" ;}' /app/cgiproxy/cgiproxy.conf.template > /app/cgiproxy/cgiproxy.conf
+perl -p -E 's{^\$SECRET_PATH=.*;$}{\$SECRET_PATH= "'"$CGIPROXY_SECRET_PATH"'" ;}' /app/cgiproxy/cgiproxy.conf.template > /app/cgiproxy/cgiproxy.conf
 chown root:www-data /app/cgiproxy/cgiproxy.conf
 chmod 0640 /app/cgiproxy/cgiproxy.conf
-echo Wrote new config file with secret $SECRET_PATH
+echo Wrote new config file with secret path \'$CGIPROXY_SECRET_PATH\'
 
 
 touch /var/log/cron.log
