@@ -1,5 +1,9 @@
-FROM  debian:bookworm-slim as base
-MAINTAINER rloomans, https://github.com/rloomans/docker-cgiproxy-fcgi
+FROM  debian:bookworm-slim AS base
+LABEL maintainer="Robert Loomans <robert@loomans.org>"
+LABEL url="https://github.com/rloomans/docker-cgiproxy-fcgi"
+LABEL source="https://github.com/rloomans/docker-cgiproxy-fcgi.git"
+LABEL org.opencontainers.image.authors="Robert Loomans <robert@loomans.org>"
+LABEL org.opencontainers.image.source="https://github.com/rloomans/docker-cgiproxy-fcgi.git"
 
 ARG APT_HTTP_PROXY
 
