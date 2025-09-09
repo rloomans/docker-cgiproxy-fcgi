@@ -1,4 +1,4 @@
-FROM  debian:bookworm-slim AS base
+FROM  debian:trixie-slim AS base
 LABEL maintainer="Robert Loomans <robert@loomans.org>"
 LABEL url="https://github.com/rloomans/docker-cgiproxy-fcgi"
 LABEL source="https://github.com/rloomans/docker-cgiproxy-fcgi.git"
