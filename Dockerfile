@@ -1,3 +1,13 @@
+FROM --platform=${BUILDPLATFORM} alpine/curl AS download
+
+RUN \
+        mkdir /tmp/cgiproxy/ && \
+        cd /tmp/cgiproxy/ && \
+        curl -L -O https://www.jmarshall.com/tools/cgiproxy/releases/cgiproxy.latest.tar.gz && \
+        tar xvzf cgiproxy.latest.tar.gz && \
+        tar xvzf cgiproxy-inner.*.tar.gz
+
+
 FROM  debian:trixie-slim AS base
 LABEL maintainer="Robert Loomans <robert@loomans.org>"
 LABEL url="https://github.com/rloomans/docker-cgiproxy-fcgi"
@@ -15,19 +25,9 @@ RUN \
         apt-get update && \
         apt-get upgrade -y -o Dpkg::Options::="--force-confold" && \
         apt-get install -y --no-install-recommends \
-          curl \
-          ca-certificates && \
-        apt-get clean && \
-        rm -rf /tmp/* /var/tmp/* /var/lib/apt/lists/* /etc/apt/apt.conf.d/apt-proxy.conf
-
-RUN \
-        export DEBIAN_FRONTEND=noninteractive && \
-        if [ -n "$APT_HTTP_PROXY" ]; then \
-            printf 'Acquire::http::Proxy "%s";\n' "${APT_HTTP_PROXY}" > /etc/apt/apt.conf.d/apt-proxy.conf; \
-        fi && \
-        apt-get update && \
-        apt-get install -y --no-install-recommends \
+            ca-certificates \
             cron \
+            curl \
             libcompress-raw-lzma-perl \
             libconfig-yaml-perl \
             libcpan-meta-perl \
@@ -55,16 +55,11 @@ RUN \
         apt-get clean && \
         rm -rf /tmp/* /var/tmp/* /var/lib/apt/lists/* /etc/apt/apt.conf.d/apt-proxy.conf
 
-RUN \
-        mkdir /tmp/cgiproxy/ && \
-        cd /tmp/cgiproxy/ && \
-        curl -L -O https://www.jmarshall.com/tools/cgiproxy/releases/cgiproxy.latest.tar.gz && \
-        tar xvzf cgiproxy.latest.tar.gz && \
-        tar xvzf cgiproxy-inner.*.tar.gz && \
-        perl -pi -E 's{^\$PROXY_DIR=.*;$}{\$PROXY_DIR= "/app/cgiproxy" ;}' nph-proxy.cgi && \
-        mkdir -m 0750 -p /app/cgiproxy/ /app/cgiproxy/bin /app/cgiproxy/sqlite /app/cgiproxy/perl5 && \
-        install -o root -g www-data -m 0750 nph-proxy.cgi /app/cgiproxy/bin/ && \
-        rm -rf /tmp/* /var/tmp/*
+RUN mkdir -m 0750 -p /app/cgiproxy/ /app/cgiproxy/bin /app/cgiproxy/sqlite /app/cgiproxy/perl5
+
+COPY --from=download --chmod=0750 --chown=root:www-data /tmp/cgiproxy/nph-proxy.cgi /app/cgiproxy/bin/
+
+RUN perl -pi -E 's{^\$PROXY_DIR=.*;$}{\$PROXY_DIR= "/app/cgiproxy" ;}' /app/cgiproxy/bin/nph-proxy.cgi
 
 WORKDIR /app/cgiproxy
 
