@@ -1,0 +1,89 @@
+name: Update CGIProxy version
+
+# Weekly check of the CGIProxy "latest" redirect. If the version changed, the
+# Dockerfile's CGIPROXY_VERSION and CGIPROXY_SHA256 are updated via a pull request.
+on:
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+
+permissions: {}
+
+env:
+  LATEST_URL: https://www.jmarshall.com/tools/cgiproxy/releases/cgiproxy.latest.tar.gz
+
+jobs:
+  update:
+    name: Check for new release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # to push the update branch
+      pull-requests: write # to open the pull request
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: true
+
+      - name: Detect latest version
+        id: version
+        run: |
+          set -euo pipefail
+          # Do not follow the redirect; read its target from the Location header
+          location="$(curl -fsS -o /dev/null -w '%{redirect_url}' "$LATEST_URL")"
+          if [ -z "$location" ]; then
+            echo "No redirect returned by $LATEST_URL" >&2
+            exit 1
+          fi
+          latest="$(basename "$location" | sed -nE 's/^cgiproxy\.([0-9][0-9A-Za-z.]*)\.tar\.gz$/\1/p')"
+          if [ -z "$latest" ]; then
+            echo "Could not extract version from $location" >&2
+            exit 1
+          fi
+          current="$(sed -nE 's/^ARG CGIPROXY_VERSION=(.+)$/\1/p' Dockerfile)"
+          echo "current=$current latest=$latest"
+          echo "latest=$latest" >> "$GITHUB_OUTPUT"
+          if [ "$latest" != "$current" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download release and compute checksum
+        id: checksum
+        if: steps.version.outputs.changed == 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.latest }}
+        run: |
+          set -euo pipefail
+          curl -fLsS -o release.tar.gz "https://www.jmarshall.com/tools/cgiproxy/releases/cgiproxy.${VERSION}.tar.gz"
+          sha="$(sha256sum release.tar.gz | cut -d' ' -f1)"
+          mkdir inner
+          tar xzf release.tar.gz -C inner
+          openssl dgst -sha256 -verify jmarshall.com.code-signing.pub.pem \
+            -signature "inner/cgiproxy-inner.${VERSION}.tar.gz.sig" \
+            "inner/cgiproxy-inner.${VERSION}.tar.gz"
+          rm -rf release.tar.gz inner
+          echo "sha256=$sha" >> "$GITHUB_OUTPUT"
+
+      - name: Update Dockerfile and open pull request
+        if: steps.version.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.latest }}
+          SHA256: ${{ steps.checksum.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+          sed -i -E \
+            -e "s/^(ARG CGIPROXY_VERSION=).*/\1${VERSION}/" \
+            -e "s/^(ARG CGIPROXY_SHA256=).*/\1${SHA256}/" \
+            Dockerfile
+          branch="update-cgiproxy-${VERSION}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git commit -am "Update CGIProxy to ${VERSION}"
+          git push --force origin "$branch"
+          gh pr create \
+            --base "${GITHUB_REF_NAME}" \
+            --head "$branch" \
+            --title "Update CGIProxy to ${VERSION}" \
+            --body "Automated update of \`CGIPROXY_VERSION\` and \`CGIPROXY_SHA256\` (\`${SHA256}\`)."
