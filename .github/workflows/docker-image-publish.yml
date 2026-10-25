@@ -50,9 +50,11 @@ jobs:
         id: buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
+      # The Dockerfile verifies the cached tarball's sha256 and code signature on
+      # every build and re-downloads it on failure, so a poisoned cache can't reach the image.
       - name: Cache CGIProxy download
         id: cgiproxy-cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0 # zizmor: ignore[cache-poisoning]
         with:
           path: cgiproxy-cache
           key: cgiproxy-download
